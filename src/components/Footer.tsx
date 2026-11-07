@@ -49,7 +49,7 @@ export const Footer: React.FC<FooterProps> = ({
             </div>
             <div className="flex items-center gap-2.5 opacity-90">
               <Phone className="h-4 w-4 shrink-0 text-[var(--gold,#d99c48)]" />
-              <span>Hotline & Zalo đặt chỗ: 0905 123 456</span>
+              <span>Hotline & Zalo đặt chỗ: 0898 236 879</span>
             </div>
             <div className="flex items-center gap-2.5 opacity-90">
               <Clock className="h-4 w-4 shrink-0 text-[var(--gold,#d99c48)]" />

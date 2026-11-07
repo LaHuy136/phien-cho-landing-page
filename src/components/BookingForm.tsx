@@ -1,14 +1,25 @@
 import React, { useState } from 'react';
-import { Check, Copy, MessageCircle, FileSpreadsheet, Loader2, ExternalLink } from 'lucide-react';
+import {
+  Check,
+  Copy,
+  MessageCircle,
+  FileSpreadsheet,
+  Loader2,
+  AlertCircle,
+  Link as LinkIcon,
+} from 'lucide-react';
 import {
   BookingRecord,
   getAccessToken,
   googleSignIn,
   createBookingSpreadsheet,
   getSavedSpreadsheetId,
+  saveSpreadsheetId,
+  extractSpreadsheetId,
   getSavedWebhookUrl,
   appendBookingToSheet,
   sendBookingToWebhook,
+  formatPhoneNumberForSheet,
 } from '../services/googleSheetsService';
 
 interface BookingFormProps {
@@ -36,6 +47,12 @@ export const BookingForm: React.FC<BookingFormProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sheetSyncStatus, setSheetSyncStatus] = useState<string | null>(null);
   const [activeSheetId, setActiveSheetId] = useState<string | null>(() => getSavedSpreadsheetId());
+  const [lastBookingData, setLastBookingData] = useState<BookingRecord | null>(null);
+  const [isSyncingManual, setIsSyncingManual] = useState(false);
+  const [showLinkInput, setShowLinkInput] = useState(false);
+  const [pastedUrl, setPastedUrl] = useState('');
+
+  const [zaloToast, setZaloToast] = useState(false);
 
   const formatVnd = (num: number) => {
     return num.toLocaleString('vi-VN') + 'đ';
@@ -43,19 +60,104 @@ export const BookingForm: React.FC<BookingFormProps> = ({
 
   const totalPrice = adultCount * priceAdult + childCount * (priceAdult * priceChildRatio);
 
+  const handleOpenZalo = () => {
+    handleCopy();
+    setZaloToast(true);
+    setTimeout(() => setZaloToast(false), 4000);
+    window.open('https://zalo.me/0898236879', '_blank');
+  };
+
+  const handleSavePastedSheetUrl = () => {
+    if (!pastedUrl.trim()) return;
+    const cleanId = extractSpreadsheetId(pastedUrl);
+    saveSpreadsheetId(cleanId);
+    setActiveSheetId(cleanId);
+    setShowLinkInput(false);
+    alert('Đã liên kết thành công với Google Sheet ID: ' + cleanId);
+  };
+
+  const handleManualSyncToSheet = async () => {
+    if (!lastBookingData) return;
+    setIsSyncingManual(true);
+    try {
+      let token = await getAccessToken();
+      if (!token) {
+        const signinRes = await googleSignIn();
+        token = signinRes?.accessToken || null;
+      }
+
+      if (!token) {
+        alert('Vui lòng chọn tài khoản Google để cấp quyền lưu vào Google Sheet của bạn.');
+        setIsSyncingManual(false);
+        return;
+      }
+
+      let sheetId = getSavedSpreadsheetId() || activeSheetId;
+      if (!sheetId) {
+        const newSheet = await createBookingSpreadsheet(token);
+        sheetId = newSheet.id;
+        setActiveSheetId(newSheet.id);
+      }
+
+      await appendBookingToSheet(token, sheetId, lastBookingData);
+      setActiveSheetId(sheetId);
+      setSheetSyncStatus('Dữ liệu giữ chỗ đã đổ về Google Sheet thành công!');
+    } catch (err: any) {
+      console.error(err);
+      alert('Không thể ghi vào Google Sheet: ' + (err.message || 'Lỗi'));
+    } finally {
+      setIsSyncingManual(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedName = name.trim();
     const trimmedPhone = phone.trim();
 
-    if (!trimmedName) {
-      setErrorMsg('Bạn nhập họ tên giúp Chồ nhé.');
+    // 1. Validate Họ và tên (tối thiểu 3 ký tự, chỉ gồm chữ cái hợp lệ)
+    if (!trimmedName || trimmedName.length < 3) {
+      setErrorMsg('Họ và tên cần có ít nhất 3 ký tự. Bạn vui lòng nhập đầy đủ họ tên giúp Chồ nhé.');
       return;
     }
 
-    if (!/^[0-9+\s.]{9,14}$/.test(trimmedPhone)) {
-      setErrorMsg('Số điện thoại chưa đúng, bạn kiểm tra lại giúp Chồ.');
+    if (!/^[a-zA-ZÀ-ỹ\s.'-]+$/.test(trimmedName)) {
+      setErrorMsg('Họ và tên không hợp lệ. Vui lòng chỉ nhập chữ cái tiếng Việt hoặc tiếng Anh.');
       return;
+    }
+
+    // 2. Validate Số điện thoại (10 chữ số bắt đầu bằng 09, 08, 07, 05, 03 hoặc số quốc tế hợp lệ)
+    const cleanPhone = trimmedPhone.replace(/[\s.-]/g, '');
+    const isForeign =
+      (/^\+[1-9]/.test(cleanPhone) && !cleanPhone.startsWith('+84')) ||
+      (/^00[1-9]/.test(cleanPhone) && !cleanPhone.startsWith('0084'));
+
+    let normalizedPhone = trimmedPhone;
+
+    if (isForeign) {
+      if (!/^\+?[0-9]{8,16}$/.test(cleanPhone)) {
+        setErrorMsg('Số điện thoại quốc tế chưa đúng định dạng. Bạn kiểm tra lại mã vùng quốc tế giúp Chồ nhé.');
+        return;
+      }
+      normalizedPhone = cleanPhone;
+    } else {
+      // Chuẩn hóa đầu số Việt Nam (+84 -> 0)
+      let vn = cleanPhone;
+      if (vn.startsWith('+84')) {
+        vn = '0' + vn.slice(3);
+      } else if (vn.startsWith('84') && vn.length === 11) {
+        vn = '0' + vn.slice(2);
+      }
+
+      // Kiểm tra chính xác 10 chữ số bắt đầu bằng 03, 05, 07, 08, 09
+      const vnPhoneRegex = /^(03|05|07|08|09)[0-9]{8}$/;
+      if (!vnPhoneRegex.test(vn)) {
+        setErrorMsg(
+          'Số điện thoại phải gồm đúng 10 chữ số và bắt đầu bằng đầu số 09, 08, 07, 05 hoặc 03 (Ví dụ: 0905123456).'
+        );
+        return;
+      }
+      normalizedPhone = vn;
     }
 
     if (adultCount + childCount < 1) {
@@ -69,7 +171,7 @@ export const BookingForm: React.FC<BookingFormProps> = ({
 
     const bookingData: BookingRecord = {
       name: trimmedName,
-      phone: trimmedPhone,
+      phone: normalizedPhone,
       adultCount,
       childCount,
       totalPrice,
@@ -84,6 +186,8 @@ export const BookingForm: React.FC<BookingFormProps> = ({
       }),
     };
 
+    setLastBookingData(bookingData);
+
     if (onNewBooking) {
       onNewBooking(bookingData);
     }
@@ -91,7 +195,7 @@ export const BookingForm: React.FC<BookingFormProps> = ({
     // Send directly to Google Sheets
     let sheetSuccess = false;
     let token = await getAccessToken();
-    let sheetId = getSavedSpreadsheetId();
+    let sheetId = getSavedSpreadsheetId() || activeSheetId;
     const webhookUrl = getSavedWebhookUrl();
 
     // If no token in memory, connect Google
@@ -141,12 +245,15 @@ export const BookingForm: React.FC<BookingFormProps> = ({
     }
 
     if (!sheetSuccess) {
-      setSheetSyncStatus('Thông tin giữ chỗ đã được ghi nhận.');
+      setSheetSyncStatus('Đã ghi nhận thông tin. Nhấn nút bên dưới để đổ trực tiếp vào Google Sheet.');
     }
 
     setIsSubmitting(false);
 
-    let msg = `Giữ chỗ Phiên chợ ký ức ở Chồ, tối 24/11\nHọ tên: ${trimmedName}\nSĐT: ${trimmedPhone}\nVé người lớn: ${adultCount} · Trẻ 6–12 tuổi: ${childCount}\nTạm tính: ${formatVnd(totalPrice)} (chưa VAT)`;
+    const formattedRaw = formatPhoneNumberForSheet(trimmedPhone);
+    const displayPhone = formattedRaw.replace(/^'/, '');
+
+    let msg = `Giữ chỗ Phiên chợ ký ức ở Chồ, tối 24/11\nHọ tên: ${trimmedName}\nSĐT: ${displayPhone}\nVé người lớn: ${adultCount} · Trẻ 6–12 tuổi: ${childCount}\nTạm tính: ${formatVnd(totalPrice)} (chưa VAT)`;
     if (isBiz) {
       msg += `\nCần chỗ tất niên công ty: ${bizInfo.trim() || 'Cần tư vấn thêm cho đoàn'}`;
     }
@@ -227,20 +334,26 @@ export const BookingForm: React.FC<BookingFormProps> = ({
               className="w-full rounded-xl border border-[var(--line,#dccfbd)] bg-[var(--bg,#f4efe6)] px-4 py-2.5 text-sm text-[var(--ink,#2a1d19)] focus:outline-none focus:ring-2 focus:ring-[var(--gold,#d99c48)]"
               required
             />
+            <span className="text-[11px] text-[var(--muted,#6b5a52)] mt-1 block">
+              Tối thiểu 3 ký tự (Ví dụ: Nguyễn Văn An)
+            </span>
           </div>
 
           <div>
             <label className="block text-sm font-semibold text-[var(--ink,#2a1d19)] mb-1">
-              Số điện thoại (dùng Zalo)
+              Số điện thoại (Zalo hoặc Whatsapp)
             </label>
             <input
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              placeholder="Ví dụ: 0905 123 456"
+              placeholder="0905 123 456 hoặc +84... / Quốc tế (Whatsapp)"
               className="w-full rounded-xl border border-[var(--line,#dccfbd)] bg-[var(--bg,#f4efe6)] px-4 py-2.5 text-sm text-[var(--ink,#2a1d19)] focus:outline-none focus:ring-2 focus:ring-[var(--gold,#d99c48)]"
               required
             />
+            <span className="text-[11px] text-[var(--muted,#6b5a52)] mt-1 block">
+              Gồm đúng 10 số, bắt đầu bằng 09, 08, 07, 05, 03 (hoặc SĐT quốc tế)
+            </span>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -307,9 +420,10 @@ export const BookingForm: React.FC<BookingFormProps> = ({
           </div>
 
           {errorMsg && (
-            <p className="text-xs text-rose-600 font-medium" role="alert">
-              {errorMsg}
-            </p>
+            <div className="rounded-xl border border-rose-300 bg-rose-50 p-3 text-xs text-rose-800 font-semibold flex items-start gap-2 animate-in fade-in" role="alert">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+              <span>{errorMsg}</span>
+            </div>
           )}
 
           <button
@@ -329,16 +443,90 @@ export const BookingForm: React.FC<BookingFormProps> = ({
 
           {/* Submission Feedback Modal/Card */}
           {bookingSummary && (
-            <div className="mt-4 rounded-xl border-2 border-[var(--accent,#993820)] bg-[var(--bg,#f4efe6)] p-5 animate-in fade-in duration-300">
-              <div className="flex items-center gap-2 text-sm font-bold text-[var(--accent,#993820)] mb-2">
+            <div className="mt-4 rounded-xl border-2 border-[var(--accent,#993820)] bg-[var(--bg,#f4efe6)] p-5 animate-in fade-in duration-300 space-y-3">
+              <div className="flex items-center gap-2 text-sm font-bold text-[var(--accent,#993820)]">
                 <Check className="w-4 h-4" />
                 <span>Thông tin giữ chỗ của bạn đã sẵn sàng!</span>
               </div>
 
-              {sheetSyncStatus && (
-                <div className="mb-3 rounded-lg bg-emerald-100/90 border border-emerald-300 p-2.5 text-xs font-semibold text-emerald-900 flex items-center gap-2">
+              {/* Zalo Toast notification */}
+              {zaloToast && (
+                <div className="rounded-lg bg-blue-50 border border-blue-300 p-2.5 text-xs font-semibold text-blue-900 flex items-center gap-2 animate-in fade-in">
+                  <MessageCircle className="w-4 h-4 text-blue-600 shrink-0" />
+                  <span>Đã sao chép nội dung! Đang chuyển đến Zalo hotline Chồ Dining (0898 236 879)...</span>
+                </div>
+              )}
+
+              {/* Status */}
+              {sheetSyncStatus?.includes('thành công') ? (
+                <div className="rounded-lg bg-emerald-100/90 border border-emerald-300 p-2.5 text-xs font-semibold text-emerald-900 flex items-center gap-2">
                   <FileSpreadsheet className="w-4 h-4 text-emerald-700 shrink-0" />
-                  <span>{sheetSyncStatus}</span>
+                  <span>Dữ liệu giữ chỗ đã được lưu thành công!</span>
+                </div>
+              ) : (
+                <div className="rounded-lg bg-amber-50 border border-amber-300 p-3 text-xs space-y-2">
+                  <div className="flex items-start gap-2 text-amber-950 font-medium">
+                    <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                    <span>
+                      Dữ liệu giữ chỗ đã được ghi nhận trên máy. Nhấn nút bên dưới để cấp quyền và đổ trực tiếp vào dòng tiếp theo của Google Sheet:
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleManualSyncToSheet}
+                    disabled={isSyncingManual}
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 text-xs font-bold shadow-xs transition duration-150 cursor-pointer disabled:opacity-50"
+                  >
+                    {isSyncingManual ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Đang kết nối & ghi vào Google Sheet...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FileSpreadsheet className="w-4 h-4" />
+                        <span>⚡ Nhấn vào đây để lưu vào Google Sheet</span>
+                      </>
+                    )}
+                  </button>
+
+                  <div className="pt-1 flex items-center justify-between text-[11px] text-stone-600">
+                    <span>
+                      {activeSheetId ? `Đang trỏ về Sheet ID: ${activeSheetId.slice(0, 10)}...` : 'Chưa có Sheet ID'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowLinkInput(!showLinkInput)}
+                      className="underline text-stone-700 hover:text-black font-medium cursor-pointer"
+                    >
+                      {showLinkInput ? 'Đóng' : 'Dán link Sheet của bạn'}
+                    </button>
+                  </div>
+
+                  {showLinkInput && (
+                    <div className="pt-2 border-t border-amber-200/80 space-y-1.5">
+                      <label className="block text-[11px] font-semibold text-stone-800">
+                        Dán URL Google Sheet bạn đang mở (ví dụ file trong ảnh):
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={pastedUrl}
+                          onChange={(e) => setPastedUrl(e.target.value)}
+                          placeholder="https://docs.google.com/spreadsheets/d/.../edit"
+                          className="flex-1 rounded-md border border-stone-300 px-2 py-1 text-xs bg-white text-stone-800 focus:outline-emerald-700 font-mono"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleSavePastedSheetUrl}
+                          className="px-3 py-1 rounded-md bg-stone-800 text-white text-xs font-semibold hover:bg-stone-900 transition cursor-pointer"
+                        >
+                          Lưu
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -346,42 +534,29 @@ export const BookingForm: React.FC<BookingFormProps> = ({
                 {bookingSummary}
               </pre>
 
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="flex flex-wrap items-center gap-2 pt-1">
                 <button
                   type="button"
                   onClick={handleCopy}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-[var(--gold,#d99c48)] px-4 py-2 text-xs font-bold text-[#2a1d19] hover:brightness-105 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-[var(--gold,#d99c48)] px-4 py-2 text-xs font-bold text-[#2a1d19] hover:brightness-105 transition cursor-pointer shadow-xs"
                 >
                   {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                   <span>{copied ? 'Đã sao chép vào bộ nhớ!' : 'Sao chép tin nhắn'}</span>
                 </button>
 
-                <a
-                  href={`https://zalo.me?text=${encodeURIComponent(bookingSummary)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-full border border-[var(--line,#dccfbd)] bg-white px-4 py-2 text-xs font-medium text-[var(--ink,#2a1d19)] hover:bg-amber-50 cursor-pointer"
+                {/* Zalo Button directly routing to 0898 236 879 */}
+                <button
+                  type="button"
+                  onClick={handleOpenZalo}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-[#0068ff] hover:bg-[#0052cc] text-white px-4 py-2 text-xs font-bold transition duration-150 cursor-pointer shadow-xs"
                 >
-                  <MessageCircle className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Gửi qua Zalo</span>
-                </a>
-
-                {activeSheetId && (
-                  <a
-                    href={`https://docs.google.com/spreadsheets/d/${activeSheetId}/edit`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-full border border-emerald-600 bg-emerald-50 px-3.5 py-2 text-xs font-semibold text-emerald-900 hover:bg-emerald-100 transition cursor-pointer"
-                  >
-                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700" />
-                    <span>Mở Google Sheet</span>
-                    <ExternalLink className="w-3 h-3 text-emerald-700" />
-                  </a>
-                )}
+                  <MessageCircle className="w-3.5 h-3.5 fill-white text-white" />
+                  <span>Gửi qua Zalo Chồ (0898 236 879)</span>
+                </button>
               </div>
 
-              <p className="mt-2.5 text-[11px] leading-relaxed text-[var(--muted,#6b5a52)]">
-                Bạn sao chép tin nhắn này rồi gửi qua Zalo hoặc Fanpage Chồ Dining để nhà hàng xác nhận giữ chỗ cho bạn nhé.
+              <p className="text-[11px] leading-relaxed text-[var(--muted,#6b5a52)]">
+                Khi bấm <b>&ldquo;Gửi qua Zalo Chồ&rdquo;</b>, thông tin đặt chỗ sẽ được tự động sao chép và mở trực tiếp cuộc trò chuyện với hotline <b>0898 236 879</b>. Bạn chỉ cần nhấn Dán (Paste) để gửi cho Chồ Dining xác nhận.
               </p>
             </div>
           )}

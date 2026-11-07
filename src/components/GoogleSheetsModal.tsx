@@ -155,21 +155,43 @@ function doPost(e) {
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
     var data = JSON.parse(e.postData.contents);
     
-    // Nếu dòng 1 chưa có tiêu đề, tạo tiêu đề
+    // Nếu dòng 1 chưa có tiêu đề, tạo tiêu đề chuẩn 8 cột
     if (sheet.getLastRow() === 0) {
-      sheet.appendRow(["Thời gian đặt", "Họ và tên", "Số điện thoại", "Vé người lớn", "Vé trẻ em", "Tạm tính (VND)", "Yêu cầu tiệc", "Trạng thái"]);
+      sheet.appendRow(["Thời gian đặt", "Họ và tên khách", "Số điện thoại", "Vé người lớn", "Vé trẻ em (6-12t)", "Tạm tính (VND)", "Yêu cầu tiệc / Ghi chú", "Trạng thái xử lý"]);
+    }
+    
+    // Định dạng số điện thoại: giữ số 0 hoặc ghi chú Whatsapp nếu số quốc tế
+    var rawPhone = String(data.phone || '').trim();
+    var digitsOnly = rawPhone.replace(/[\\s.-]/g, '');
+    var formattedPhone = rawPhone;
+    
+    if (/^\\+[1-9]/.test(digitsOnly) && !digitsOnly.startsWith('+84')) {
+      formattedPhone = "'" + rawPhone + " (Whatsapp)";
+    } else {
+      var vn = digitsOnly;
+      if (vn.startsWith('+84')) vn = '0' + vn.slice(3);
+      else if (vn.startsWith('84') && vn.length >= 11) vn = '0' + vn.slice(2);
+      else if (vn.length === 9 && /^[35789]/.test(vn)) vn = '0' + vn;
+      else if (!vn.startsWith('0') && vn.length >= 9) vn = '0' + vn;
+      formattedPhone = "'" + vn;
     }
     
     sheet.appendRow([
       data.timestamp || new Date().toLocaleString("vi-VN"),
       data.name,
-      data.phone,
+      formattedPhone,
       data.adultCount,
       data.childCount,
       data.totalPrice,
       data.bizInfo || "Khách lẻ",
       "Mới đặt - Cần liên hệ"
     ]);
+
+    // Thiết lập trình đơn thả xuống (Dropdown) cho cột Trạng thái xử lý
+    var rule = SpreadsheetApp.newDataValidation()
+      .requireValueInList(["Mới đặt - Cần liên hệ", "Đã liên hệ và Thanh toán"], true)
+      .build();
+    sheet.getRange("H2:H1000").setDataValidation(rule);
     
     return ContentService.createTextOutput(JSON.stringify({ status: "success" }))
       .setMimeType(ContentService.MimeType.JSON);

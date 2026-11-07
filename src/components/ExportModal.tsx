@@ -276,8 +276,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             <input type="text" id="custName" required placeholder="Ví dụ: Nguyễn Văn An" style="width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:10px;font-size:0.95rem;background:#fff;" />
           </div>
           <div>
-            <label style="font-size:0.85rem;font-weight:600;display:block;margin-bottom:4px;">Số điện thoại (dùng Zalo)</label>
-            <input type="tel" id="custPhone" required placeholder="Ví dụ: 0905 123 456" style="width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:10px;font-size:0.95rem;background:#fff;" />
+            <label style="font-size:0.85rem;font-weight:600;display:block;margin-bottom:4px;">Số điện thoại (Zalo hoặc Whatsapp)</label>
+            <input type="tel" id="custPhone" required placeholder="0905 123 456 hoặc +84... / Quốc tế (Whatsapp)" style="width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:10px;font-size:0.95rem;background:#fff;" />
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
             <div>
@@ -303,7 +303,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           <b style="color:var(--accent);display:block;margin-bottom:6px;">✓ Thông tin giữ chỗ đã sẵn sàng!</b>
           <pre id="summaryText" style="white-space:pre-wrap;font-size:0.85rem;background:#fff;padding:10px;border-radius:8px;border:1px solid var(--line);font-family:inherit;"></pre>
           <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
-            <a id="zaloLink" target="_blank" class="btn btn-gold" style="font-size:0.85rem;padding:8px 16px;">Gửi tin qua Zalo Chồ</a>
+            <a id="zaloLink" target="_blank" href="https://zalo.me/0898236879" class="btn btn-gold" style="font-size:0.85rem;padding:8px 16px;">Gửi qua Zalo Chồ (0898 236 879)</a>
             <button type="button" onclick="copyBookingMsg()" class="btn btn-ghost" style="color:var(--ink);border-color:var(--line);font-size:0.85rem;padding:8px 16px;">Sao chép tin</button>
           </div>
         </div>
@@ -344,10 +344,34 @@ export const ExportModal: React.FC<ExportModalProps> = ({
       var note = document.getElementById('custNote').value.trim();
       var total = adults * 500000 + children * 250000;
 
-      lastSummary = 'Giữ chỗ Phiên chợ ký ức ở Chồ, tối 24/11\\nHọ tên: ' + name + '\\nSĐT: ' + phone + '\\nVé người lớn: ' + adults + ' · Trẻ em: ' + children + '\\nTạm tính: ' + total.toLocaleString('vi-VN') + 'đ' + (note ? ('\\nGhi chú: ' + note) : '');
+      if (!name || name.length < 3) {
+        alert('Họ và tên cần có ít nhất 3 ký tự. Bạn vui lòng nhập đầy đủ họ tên giúp Chồ nhé.');
+        return;
+      }
+
+      // Chuẩn hóa và kiểm tra số điện thoại
+      var digitsOnly = phone.replace(/[\\s.-]/g, '');
+      var isForeign = (/^\\+[1-9]/.test(digitsOnly) && !digitsOnly.startsWith('+84')) || (/^00[1-9]/.test(digitsOnly) && !digitsOnly.startsWith('0084'));
+      var formattedPhone = phone;
+
+      if (isForeign) {
+        formattedPhone = phone.indexOf('Whatsapp') !== -1 ? phone : (phone + ' (Whatsapp)');
+      } else {
+        var vn = digitsOnly;
+        if (vn.startsWith('+84')) vn = '0' + vn.slice(3);
+        else if (vn.startsWith('84') && vn.length === 11) vn = '0' + vn.slice(2);
+        
+        if (!/^(03|05|07|08|09)[0-9]{8}$/.test(vn)) {
+          alert('Số điện thoại phải gồm đúng 10 chữ số và bắt đầu bằng đầu số 09, 08, 07, 05 hoặc 03 (Ví dụ: 0905123456).');
+          return;
+        }
+        formattedPhone = vn;
+      }
+
+      lastSummary = 'Giữ chỗ Phiên chợ ký ức ở Chồ, tối 24/11\\nHọ tên: ' + name + '\\nSĐT: ' + formattedPhone + '\\nVé người lớn: ' + adults + ' · Trẻ em: ' + children + '\\nTạm tính: ' + total.toLocaleString('vi-VN') + 'đ' + (note ? ('\\nGhi chú: ' + note) : '');
 
       document.getElementById('summaryText').innerText = lastSummary;
-      document.getElementById('zaloLink').href = 'https://zalo.me?text=' + encodeURIComponent(lastSummary);
+      document.getElementById('zaloLink').href = 'https://zalo.me/0898236879';
       document.getElementById('bookingResult').style.display = 'block';
 
       // Send to Google Sheets webhook if available
@@ -358,7 +382,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name: name,
-            phone: phone,
+            phone: formattedPhone,
             adultCount: adults,
             childCount: children,
             totalPrice: total,
