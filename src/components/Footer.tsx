@@ -4,18 +4,16 @@ import { LandingConfig } from '../types';
 
 interface FooterProps {
   serifFontClass?: string;
-  isPublishMode: boolean;
-  onOpenCustomizer: () => void;
-  onTogglePublishMode: () => void;
   config?: LandingConfig;
+  onOpenExportModal?: () => void;
+  onOpenGoogleSheetsModal?: () => void;
 }
 
 export const Footer: React.FC<FooterProps> = ({
   serifFontClass = 'font-serif',
-  isPublishMode,
-  onOpenCustomizer,
-  onTogglePublishMode,
   config,
+  onOpenExportModal,
+  onOpenGoogleSheetsModal,
 }) => {
   return (
     <footer className="w-full bg-[var(--deep,#7d2c19)] text-[var(--on-deep,#f6ece0)] pt-16 pb-12 border-t border-white/10 relative">
@@ -99,25 +97,26 @@ export const Footer: React.FC<FooterProps> = ({
           <p>© 2026 Chồ Dining. Bảo lưu mọi quyền.</p>
 
           <div className="flex items-center gap-3">
-            {isPublishMode ? (
+            {onOpenExportModal && (
               <button
                 type="button"
-                onClick={onTogglePublishMode}
-                className="text-amber-200/80 hover:text-white hover:underline inline-flex items-center gap-1"
-                title="Mở lại công cụ tùy chỉnh font chữ và ảnh"
+                onClick={onOpenExportModal}
+                className="hover:text-white hover:underline text-amber-200/80 transition cursor-pointer"
               >
-                <Sliders className="h-3 w-3" />
-                <span>Chỉnh sửa giao diện</span>
+                Xuất bản & Tên miền
               </button>
-            ) : (
-              <button
-                type="button"
-                onClick={onOpenCustomizer}
-                className="text-amber-200 hover:text-white hover:underline inline-flex items-center gap-1 font-semibold"
-              >
-                <Sliders className="h-3.5 w-3.5" />
-                <span>Mở bảng tùy chỉnh</span>
-              </button>
+            )}
+            {onOpenGoogleSheetsModal && (
+              <>
+                <span>·</span>
+                <button
+                  type="button"
+                  onClick={onOpenGoogleSheetsModal}
+                  className="hover:text-white hover:underline text-emerald-300/80 transition cursor-pointer"
+                >
+                  Google Sheet
+                </button>
+              </>
             )}
           </div>
         </div>

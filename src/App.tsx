@@ -86,17 +86,11 @@ export default function App() {
     return DEFAULT_LANDING_CONFIG;
   });
 
-  // Track Publish Mode (default false so user sees customizer right away)
-  const [isPublishMode, setIsPublishMode] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem(STORAGE_KEY_PUBLISH) === 'true';
-    } catch {
-      return false;
-    }
-  });
+  // Publish Mode is active by default (clean production landing page)
+  const [isPublishMode, setIsPublishMode] = useState<boolean>(true);
 
-  // Open customizer immediately so user can edit content
-  const [isCustomizerOpen, setIsCustomizerOpen] = useState(true);
+  // Customizer drawer closed by default
+  const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isGoogleSheetsModalOpen, setIsGoogleSheetsModalOpen] = useState(false);
   const [editingStallId, setEditingStallId] = useState<string | null>(null);
@@ -217,15 +211,8 @@ export default function App() {
         fontSize: `calc(16px * ${config.fonts.fontSizeScale})`,
       }}
     >
-      {/* Header and Top Notification */}
-      <HeaderNav
-        serifFontClass={serifClass}
-        isPublishMode={isPublishMode}
-        onOpenCustomizer={() => setIsCustomizerOpen(true)}
-        onTogglePublishMode={() => setIsPublishMode(!isPublishMode)}
-        onOpenExportModal={() => setIsExportModalOpen(true)}
-        onOpenGoogleSheetsModal={() => setIsGoogleSheetsModalOpen(true)}
-      />
+      {/* Header Navigation */}
+      <HeaderNav serifFontClass={serifClass} />
 
       <main className="flex-1">
         {/* ================= HERO SECTION ================= */}
@@ -500,9 +487,7 @@ export default function App() {
               priceAdult={config.hero.priceAdult}
               priceChildRatio={config.hero.priceChildRatio}
               serifFontClass={serifClass}
-              onOpenGoogleSheetsModal={() => setIsGoogleSheetsModalOpen(true)}
               onNewBooking={handleNewBooking}
-              isPublishMode={isPublishMode}
             />
           </div>
         </section>
@@ -537,10 +522,9 @@ export default function App() {
       {/* Footer */}
       <Footer
         serifFontClass={serifClass}
-        isPublishMode={isPublishMode}
-        onOpenCustomizer={() => setIsCustomizerOpen(true)}
-        onTogglePublishMode={() => setIsPublishMode(!isPublishMode)}
         config={config}
+        onOpenExportModal={() => setIsExportModalOpen(true)}
+        onOpenGoogleSheetsModal={() => setIsGoogleSheetsModalOpen(true)}
       />
 
       {/* Smooth Scroll to Top Floating Button */}
@@ -556,55 +540,6 @@ export default function App() {
           <span className="hidden sm:inline font-medium">Lên đầu trang</span>
         </button>
       )}
-
-      {/* Persistent Floating Edit Button (Discreet when in Publish mode) */}
-      <aside
-        aria-label="Công cụ thiết kế nổi"
-        className="fixed bottom-5 right-5 z-40 flex items-center gap-2"
-      >
-        {isPublishMode ? (
-          <button
-            type="button"
-            onClick={() => setIsPublishMode(false)}
-            className="flex items-center gap-1.5 rounded-full bg-stone-900/90 hover:bg-stone-900 px-3.5 py-2 text-xs font-semibold text-amber-300 shadow-xl backdrop-blur-md transition hover:scale-105 active:scale-95"
-            title="Nhấn để mở lại chế độ tùy chỉnh hình ảnh & font chữ"
-          >
-            <Sliders className="h-3.5 w-3.5" />
-            <span>Mở lại Tùy chỉnh</span>
-          </button>
-        ) : (
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setIsGoogleSheetsModalOpen(true)}
-              className="flex items-center gap-1.5 rounded-full bg-emerald-800 hover:bg-emerald-700 px-3.5 py-2.5 text-xs font-bold text-white shadow-xl transition hover:scale-105 active:scale-95 cursor-pointer"
-              title="Mở kết nối và xem Google Sheet đặt chỗ"
-            >
-              <FileSpreadsheet className="h-4 w-4 text-emerald-200" />
-              <span className="hidden sm:inline">Google Sheet</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setIsCustomizerOpen(true)}
-              className="flex items-center gap-2 rounded-full bg-amber-700 hover:bg-amber-800 px-4 py-2.5 text-xs font-bold text-white shadow-xl transition hover:scale-105 active:scale-95"
-            >
-              <Sliders className="h-4 w-4" />
-              <span>Tùy chỉnh Font & Ảnh</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setIsPublishMode(true)}
-              className="flex items-center gap-1.5 rounded-full bg-stone-900 hover:bg-black px-3.5 py-2.5 text-xs font-semibold text-white shadow-xl transition hover:scale-105 active:scale-95"
-              title="Bỏ thanh công cụ và xem chế độ xuất bản sạch sẽ"
-            >
-              <Eye className="h-4 w-4 text-emerald-400" />
-              <span>Xem Publish</span>
-            </button>
-          </div>
-        )}
-      </aside>
 
       {/* Customizer Slide-out Drawer */}
       <CustomizerDrawer

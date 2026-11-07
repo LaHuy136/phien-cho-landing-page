@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { Check, Copy, MessageCircle, FileSpreadsheet, Loader2, Sparkles, ExternalLink } from 'lucide-react';
+import { Check, Copy, MessageCircle, FileSpreadsheet, Loader2, ExternalLink } from 'lucide-react';
 import {
   BookingRecord,
   getAccessToken,
+  googleSignIn,
+  createBookingSpreadsheet,
   getSavedSpreadsheetId,
   getSavedWebhookUrl,
   appendBookingToSheet,
@@ -13,18 +15,14 @@ interface BookingFormProps {
   priceAdult: number;
   priceChildRatio: number;
   serifFontClass?: string;
-  onOpenGoogleSheetsModal?: () => void;
   onNewBooking?: (booking: BookingRecord) => void;
-  isPublishMode?: boolean;
 }
 
 export const BookingForm: React.FC<BookingFormProps> = ({
   priceAdult = 500000,
   priceChildRatio = 0.5,
   serifFontClass = 'font-serif',
-  onOpenGoogleSheetsModal,
   onNewBooking,
-  isPublishMode = false,
 }) => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -37,6 +35,7 @@ export const BookingForm: React.FC<BookingFormProps> = ({
   const [copied, setCopied] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sheetSyncStatus, setSheetSyncStatus] = useState<string | null>(null);
+  const [activeSheetId, setActiveSheetId] = useState<string | null>(() => getSavedSpreadsheetId());
 
   const formatVnd = (num: number) => {
     return num.toLocaleString('vi-VN') + 'đ';
@@ -66,7 +65,7 @@ export const BookingForm: React.FC<BookingFormProps> = ({
 
     setErrorMsg('');
     setIsSubmitting(true);
-    setSheetSyncStatus(null);
+    setSheetSyncStatus('Đang xử lý và gửi dữ liệu về Google Sheet...');
 
     const bookingData: BookingRecord = {
       name: trimmedName,
@@ -89,36 +88,60 @@ export const BookingForm: React.FC<BookingFormProps> = ({
       onNewBooking(bookingData);
     }
 
-    // Try sending to Google Sheets:
+    // Send directly to Google Sheets
     let sheetSuccess = false;
-    const token = await getAccessToken();
-    const sheetId = getSavedSpreadsheetId();
+    let token = await getAccessToken();
+    let sheetId = getSavedSpreadsheetId();
     const webhookUrl = getSavedWebhookUrl();
 
-    if (token && sheetId) {
+    // If no token in memory, connect Google
+    if (!token) {
       try {
-        await appendBookingToSheet(token, sheetId, bookingData);
-        sheetSuccess = true;
-        setSheetSyncStatus('Đã tự động lưu vào Google Sheet của Chồ Dining');
-      } catch (err) {
-        console.warn('Could not append via API, trying webhook fallback', err);
+        const signinRes = await googleSignIn();
+        if (signinRes?.accessToken) {
+          token = signinRes.accessToken;
+        }
+      } catch (authErr) {
+        console.warn('Google sign-in skipped or closed', authErr);
       }
     }
 
-    if (!sheetSuccess && webhookUrl) {
+    if (token) {
+      // Auto-create spreadsheet if none connected yet
+      if (!sheetId) {
+        try {
+          const newSheet = await createBookingSpreadsheet(token);
+          sheetId = newSheet.id;
+          setActiveSheetId(newSheet.id);
+        } catch (e) {
+          console.warn('Could not auto-create sheet', e);
+        }
+      }
+
+      if (sheetId) {
+        try {
+          await appendBookingToSheet(token, sheetId, bookingData);
+          sheetSuccess = true;
+          setActiveSheetId(sheetId);
+          setSheetSyncStatus('Dữ liệu giữ chỗ đã đổ về Google Sheet thành công!');
+        } catch (err) {
+          console.warn('Could not append via API, fallback', err);
+        }
+      }
+    }
+
+    if (webhookUrl) {
       try {
         await sendBookingToWebhook(webhookUrl, bookingData);
         sheetSuccess = true;
-        setSheetSyncStatus('Đã đổ dữ liệu thành công về Google Sheet');
+        setSheetSyncStatus('Dữ liệu giữ chỗ đã đổ về Google Sheet thành công!');
       } catch (err) {
         console.warn('Webhook failed', err);
       }
     }
 
     if (!sheetSuccess) {
-      if (sheetId) {
-        setSheetSyncStatus('Đã ghi nhận cục bộ (bấm Đồng bộ lên Google Sheet khi mở trang quản trị)');
-      }
+      setSheetSyncStatus('Thông tin giữ chỗ đã được ghi nhận.');
     }
 
     setIsSubmitting(false);
@@ -304,23 +327,6 @@ export const BookingForm: React.FC<BookingFormProps> = ({
             )}
           </button>
 
-          {/* Admin / Manager Connection Link */}
-          {!isPublishMode && onOpenGoogleSheetsModal && (
-            <div className="pt-1 flex items-center justify-between text-xs text-stone-500 border-t border-dashed border-[var(--line,#dccfbd)] mt-2">
-              <span className="flex items-center gap-1.5 text-emerald-800 font-medium">
-                <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
-                <span>Dữ liệu đổ về Google Sheet</span>
-              </span>
-              <button
-                type="button"
-                onClick={onOpenGoogleSheetsModal}
-                className="text-emerald-700 hover:text-emerald-900 font-semibold underline underline-offset-2 transition cursor-pointer"
-              >
-                Cấu hình bảng tính &rarr;
-              </button>
-            </div>
-          )}
-
           {/* Submission Feedback Modal/Card */}
           {bookingSummary && (
             <div className="mt-4 rounded-xl border-2 border-[var(--accent,#993820)] bg-[var(--bg,#f4efe6)] p-5 animate-in fade-in duration-300">
@@ -330,7 +336,7 @@ export const BookingForm: React.FC<BookingFormProps> = ({
               </div>
 
               {sheetSyncStatus && (
-                <div className="mb-3 rounded-lg bg-emerald-100/80 border border-emerald-300 p-2.5 text-xs font-semibold text-emerald-900 flex items-center gap-2">
+                <div className="mb-3 rounded-lg bg-emerald-100/90 border border-emerald-300 p-2.5 text-xs font-semibold text-emerald-900 flex items-center gap-2">
                   <FileSpreadsheet className="w-4 h-4 text-emerald-700 shrink-0" />
                   <span>{sheetSyncStatus}</span>
                 </div>
@@ -360,15 +366,17 @@ export const BookingForm: React.FC<BookingFormProps> = ({
                   <span>Gửi qua Zalo</span>
                 </a>
 
-                {onOpenGoogleSheetsModal && (
-                  <button
-                    type="button"
-                    onClick={onOpenGoogleSheetsModal}
+                {activeSheetId && (
+                  <a
+                    href={`https://docs.google.com/spreadsheets/d/${activeSheetId}/edit`}
+                    target="_blank"
+                    rel="noreferrer"
                     className="inline-flex items-center gap-1.5 rounded-full border border-emerald-600 bg-emerald-50 px-3.5 py-2 text-xs font-semibold text-emerald-900 hover:bg-emerald-100 transition cursor-pointer"
                   >
                     <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700" />
-                    <span>Xem Google Sheet</span>
-                  </button>
+                    <span>Mở Google Sheet</span>
+                    <ExternalLink className="w-3 h-3 text-emerald-700" />
+                  </a>
                 )}
               </div>
 
