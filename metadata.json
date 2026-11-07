@@ -1,0 +1,8 @@
+{
+  "name": "Phiên chợ ký ức ở Chồ - Landing Page \u0026 Customizer",
+  "description": "Trang landing giới thiệu sự kiện Phiên chợ ký ức ở Chồ Dining với bộ công cụ tùy chỉnh font chữ và hình ảnh linh hoạt, sẵn sàng xuất bản.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
