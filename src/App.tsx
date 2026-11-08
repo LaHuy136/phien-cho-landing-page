@@ -29,52 +29,28 @@ import {
 } from './data/landingData';
 import { LandingConfig, StallItem } from './types';
 
-const STORAGE_KEY_CONFIG = 'cho_landing_config_v2';
+const STORAGE_KEY_CONFIG = 'cho_landing_config_v4';
 const STORAGE_KEY_PUBLISH = 'cho_landing_publish_mode_v1';
 
 export default function App() {
-  // Initialize config with saved localStorage if present
+  // Initialize config with canonical defaults, merging customized stalls if present
   const [config, setConfig] = useState<LandingConfig>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY_CONFIG) || localStorage.getItem('cho_landing_config_v1');
+      const saved = localStorage.getItem(STORAGE_KEY_CONFIG);
       if (saved) {
         const parsed = JSON.parse(saved);
-        // Ensure default fonts are updated to Beautydisplay and Haskoy if previous defaults were loaded
-        if (parsed?.fonts?.serifFont === 'Cormorant Garamond' || !parsed?.fonts?.serifFont) {
-          parsed.fonts.serifFont = 'Beautydisplay';
-        }
-        if (parsed?.fonts?.sansFont === 'Be Vietnam Pro' || !parsed?.fonts?.sansFont) {
-          parsed.fonts.sansFont = 'Haskoy';
-        }
-        // Ensure hero visualType defaults to background and coin is removed
-        if (parsed?.hero?.visualType === 'coin' || !parsed?.hero?.visualType) {
-          parsed.hero.visualType = 'background';
-        }
-        if (!parsed?.hero?.customImageUrl) {
-          parsed.hero.customImageUrl = 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1920&q=80';
-        }
-        if (!parsed?.hero?.keyVisualUrl) {
-          parsed.hero.keyVisualUrl = '/images/key_visual.jpg';
-        }
-        if (!parsed?.hero?.title) {
-          parsed.hero.title = DEFAULT_LANDING_CONFIG.hero.title;
-        }
-        if (!parsed?.hero?.description) {
-          parsed.hero.description = DEFAULT_LANDING_CONFIG.hero.description;
-        }
-        if (!parsed?.story) {
-          parsed.story = DEFAULT_LANDING_CONFIG.story;
-        }
-        if (!parsed?.timeline) {
-          parsed.timeline = DEFAULT_LANDING_CONFIG.timeline;
-        }
-        if (!parsed?.stallsSection) {
-          parsed.stallsSection = DEFAULT_LANDING_CONFIG.stallsSection;
-        }
-        if (!parsed?.faqs) {
-          parsed.faqs = DEFAULT_LANDING_CONFIG.faqs;
-        }
-        return parsed;
+        return {
+          ...DEFAULT_LANDING_CONFIG,
+          ...parsed,
+          hero: {
+            ...DEFAULT_LANDING_CONFIG.hero,
+            ...(parsed.hero || {}),
+            eventDate: DEFAULT_LANDING_CONFIG.hero.eventDate,
+            eventDateFormatted: DEFAULT_LANDING_CONFIG.hero.eventDateFormatted,
+            locationAddress: DEFAULT_LANDING_CONFIG.hero.locationAddress,
+            description: DEFAULT_LANDING_CONFIG.hero.description,
+          },
+        };
       }
     } catch (e) {
       console.warn('Could not parse saved config, using default', e);
