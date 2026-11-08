@@ -276,12 +276,12 @@ export const BookingForm: React.FC<BookingFormProps> = ({
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
       {/* Left Column: Ticket description */}
       <div className="lg:col-span-6 space-y-4 text-[var(--ink,#2a1d19)]">
-        <h2 className={`text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-[var(--accent,#993820)] ${serifFontClass}`}>
+        <h2 className={`font-bold tracking-tight text-[var(--accent,#993820)] ${serifFontClass} text-[42px] leading-[42px]`}>
           Một chiếc vé, một phiên chợ
         </h2>
 
         <div className="flex items-baseline gap-2 pt-1 pb-2">
-          <span className={`text-4xl sm:text-5xl font-bold text-[var(--accent,#993820)] ${serifFontClass}`}>
+          <span className={`font-bold text-[var(--accent,#993820)] ${serifFontClass} text-[44px] leading-[44px]`}>
             {formatVnd(priceAdult)}
           </span>
           <span className="text-sm sm:text-base font-medium text-[var(--muted,#6b5a52)]">
@@ -289,15 +289,7 @@ export const BookingForm: React.FC<BookingFormProps> = ({
           </span>
         </div>
 
-        <p className="text-base sm:text-lg leading-relaxed text-[var(--muted,#6b5a52)]">
-          Vé là một chiếc rổ tre và những đồng xu tre. Bạn đi chợ bằng xu: đủ để ăn ở cả sáu gánh, không phải tính toán gì.
-        </p>
-
         <ul className="space-y-3 pt-2 text-sm text-[var(--muted,#6b5a52)]">
-          <li className="flex items-start gap-3">
-            <span className="mt-1 h-3 w-3 shrink-0 rounded-full border-2 border-[var(--accent,#993820)]" />
-            <span>Muốn uống thêm một ly bia mát, hay mang về chút nước mắm Nam Ô, bánh tráng Đại Lộc, trà sen thơm, bạn có thể đổi thêm xu tại quầy.</span>
-          </li>
           <li className="flex items-start gap-3">
             <span className="mt-1 h-3 w-3 shrink-0 rounded-full border-2 border-[var(--accent,#993820)]" />
             <span>Trẻ 6–12 tuổi đi chợ nửa giá ({formatVnd(priceAdult * priceChildRatio)}), dưới 6 tuổi đi cùng gia đình không mất vé.</span>
@@ -310,7 +302,7 @@ export const BookingForm: React.FC<BookingFormProps> = ({
 
         <div className="rounded-xl border border-dashed border-[var(--line,#dccfbd)] bg-amber-950/5 p-4 text-sm text-[var(--ink,#2a1d19)]">
           <p className="m-0">
-            Nếu công ty bạn đang tìm một không gian độc đáo và hoài niệm cho bữa tiệc tất niên cuối năm, cứ tích chọn ở form bên cạnh. Đội ngũ Chồ sẽ liên hệ trao đổi chi tiết trong vòng 24 giờ.
+            Nếu công ty bạn đang tìm một không gian độc đáo và hoài niệm cho bữa tiệc tất niên cuối năm, cứ tích chọn ở form bên cạnh. Đội ngũ Chồ sẽ liên hệ trao đổi chi tiết trong thời gian sớm nhất.
           </p>
         </div>
       </div>

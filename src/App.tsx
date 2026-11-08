@@ -14,14 +14,12 @@ import {
   Camera,
   Share2,
   ArrowUp,
-  FileSpreadsheet,
 } from 'lucide-react';
 import { Countdown } from './components/Countdown';
 import { StallCard } from './components/StallCard';
 import { BookingForm } from './components/BookingForm';
 import { CustomizerDrawer } from './components/CustomizerDrawer';
 import { ExportModal } from './components/ExportModal';
-import { GoogleSheetsModal } from './components/GoogleSheetsModal';
 import { HeaderNav } from './components/HeaderNav';
 import { Footer } from './components/Footer';
 import {
@@ -30,11 +28,9 @@ import {
   TIMELINE_EVENTS,
 } from './data/landingData';
 import { LandingConfig, StallItem } from './types';
-import { BookingRecord } from './services/googleSheetsService';
 
 const STORAGE_KEY_CONFIG = 'cho_landing_config_v2';
 const STORAGE_KEY_PUBLISH = 'cho_landing_publish_mode_v1';
-const STORAGE_KEY_BOOKINGS = 'cho_recent_bookings_v1';
 
 export default function App() {
   // Initialize config with saved localStorage if present
@@ -86,35 +82,24 @@ export default function App() {
     return DEFAULT_LANDING_CONFIG;
   });
 
-  // Publish Mode is active by default (clean production landing page)
-  const [isPublishMode, setIsPublishMode] = useState<boolean>(true);
-
-  // Customizer drawer closed by default
-  const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
-  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [isGoogleSheetsModalOpen, setIsGoogleSheetsModalOpen] = useState(false);
-  const [editingStallId, setEditingStallId] = useState<string | null>(null);
-  const [showBackToTop, setShowBackToTop] = useState(false);
-  const [recentBookings, setRecentBookings] = useState<BookingRecord[]>(() => {
+  // Track Publish Mode (default true for official published live website)
+  const [isPublishMode, setIsPublishMode] = useState<boolean>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY_BOOKINGS);
-      return saved ? JSON.parse(saved) : [];
+      const saved = localStorage.getItem(STORAGE_KEY_PUBLISH);
+      if (saved !== null) {
+        return saved === 'true';
+      }
+      return true; // Default to PUBLISH MODE: ON
     } catch {
-      return [];
+      return true;
     }
   });
 
-  const handleNewBooking = (booking: BookingRecord) => {
-    setRecentBookings((prev) => {
-      const updated = [booking, ...prev];
-      try {
-        localStorage.setItem(STORAGE_KEY_BOOKINGS, JSON.stringify(updated.slice(0, 50)));
-      } catch (e) {
-        console.warn('Could not save booking locally', e);
-      }
-      return updated;
-    });
-  };
+  // Customizer closed by default for official clean live website
+  const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [editingStallId, setEditingStallId] = useState<string | null>(null);
+  const [showBackToTop, setShowBackToTop] = useState(false);
 
   // Monitor scroll position for smooth Back to Top button
   useEffect(() => {
@@ -202,6 +187,14 @@ export default function App() {
     setIsCustomizerOpen(true);
   };
 
+  const handleUpdateStallImage = (stallId: string, newUrl: string) => {
+    setConfig((prev) => ({
+      ...prev,
+      stallsStyle: 'card-image',
+      stalls: prev.stalls.map((s) => (s.id === stallId ? { ...s, imageUrl: newUrl } : s)),
+    }));
+  };
+
   const serifClass = 'font-serif';
 
   return (
@@ -211,8 +204,10 @@ export default function App() {
         fontSize: `calc(16px * ${config.fonts.fontSizeScale})`,
       }}
     >
-      {/* Header Navigation */}
-      <HeaderNav serifFontClass={serifClass} />
+      {/* Header and Top Navigation */}
+      <HeaderNav
+        serifFontClass={serifClass}
+      />
 
       <main className="flex-1">
         {/* ================= HERO SECTION ================= */}
@@ -472,6 +467,7 @@ export default function App() {
                     stallsStyle={config.stallsStyle}
                     isPublishMode={isPublishMode}
                     onEditImage={handleOpenStallEdit}
+                    onUpdateStallImage={handleUpdateStallImage}
                     serifFontClass={serifClass}
                   />
                 ))}
@@ -487,7 +483,6 @@ export default function App() {
               priceAdult={config.hero.priceAdult}
               priceChildRatio={config.hero.priceChildRatio}
               serifFontClass={serifClass}
-              onNewBooking={handleNewBooking}
             />
           </div>
         </section>
@@ -523,8 +518,6 @@ export default function App() {
       <Footer
         serifFontClass={serifClass}
         config={config}
-        onOpenExportModal={() => setIsExportModalOpen(true)}
-        onOpenGoogleSheetsModal={() => setIsGoogleSheetsModalOpen(true)}
       />
 
       {/* Smooth Scroll to Top Floating Button */}
@@ -571,13 +564,6 @@ export default function App() {
           setIsExportModalOpen(false);
           setIsPublishMode(true);
         }}
-      />
-
-      {/* Google Sheets Sync & Management Modal */}
-      <GoogleSheetsModal
-        isOpen={isGoogleSheetsModalOpen}
-        onClose={() => setIsGoogleSheetsModalOpen(false)}
-        recentBookings={recentBookings}
       />
     </div>
   );

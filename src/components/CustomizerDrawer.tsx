@@ -21,16 +21,19 @@ import {
   Ticket,
   Utensils,
   BookOpen,
+  AlertCircle,
 } from 'lucide-react';
 import {
   AVAILABLE_SERIF_FONTS,
   AVAILABLE_SANS_FONTS,
   CURATED_FOOD_PRESETS,
+  CHICKEN_FOOD_PRESETS,
   DEFAULT_LANDING_CONFIG,
   TIMELINE_EVENTS,
   FAQS,
 } from '../data/landingData';
 import { LandingConfig, StallItem } from '../types';
+import { compressImageFile, sanitizeImageUrl } from '../utils/imageUtils';
 
 interface CustomizerDrawerProps {
   isOpen: boolean;
@@ -59,6 +62,7 @@ export const CustomizerDrawer: React.FC<CustomizerDrawerProps> = ({
   const [customUrlInput, setCustomUrlInput] = useState('');
   const [heroCustomUrl, setHeroCustomUrl] = useState(config.hero.customImageUrl || '');
   const [keyVisualCustomUrl, setKeyVisualCustomUrl] = useState(config.hero.keyVisualUrl || '/images/key_visual.jpg');
+  const [feedbackMsg, setFeedbackMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const heroFileInputRef = useRef<HTMLInputElement>(null);
   const keyVisualFileInputRef = useRef<HTMLInputElement>(null);
@@ -98,53 +102,75 @@ export const CustomizerDrawer: React.FC<CustomizerDrawerProps> = ({
   };
 
   // Image handlers for stall
-  const updateStallImage = (stallId: string, url: string) => {
-    const updatedStalls = config.stalls.map((s) => (s.id === stallId ? { ...s, imageUrl: url } : s));
-    onChangeConfig({ ...config, stalls: updatedStalls });
+  const updateStallImage = (stallId: string, rawUrl: string) => {
+    const cleanUrl = sanitizeImageUrl(rawUrl);
+    const updatedStalls = config.stalls.map((s) => (s.id === stallId ? { ...s, imageUrl: cleanUrl } : s));
+    onChangeConfig({
+      ...config,
+      stalls: updatedStalls,
+      stallsStyle: config.stallsStyle === 'minimal-classic' ? 'card-image' : config.stallsStyle,
+    });
+    const stall = config.stalls.find((s) => s.id === stallId);
+    setFeedbackMsg({
+      text: `Đã cập nhật hình ảnh thành công cho ${stall?.name || 'gánh'}!`,
+      type: 'success',
+    });
+    setTimeout(() => setFeedbackMsg(null), 3000);
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, stallId: string) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, stallId: string) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          updateStallImage(stallId, event.target.result as string);
-        }
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressed = await compressImageFile(file, 1200, 0.82);
+        updateStallImage(stallId, compressed);
+      } catch (err) {
+        console.warn('Error compressing image', err);
+        setFeedbackMsg({
+          text: 'Không thể xử lý file ảnh này. Vui lòng chọn ảnh định dạng JPG hoặc PNG.',
+          type: 'error',
+        });
+      } finally {
+        e.target.value = '';
+      }
     }
   };
 
-  const handleHeroFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleHeroFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          onChangeConfig({
-            ...config,
-            hero: { ...config.hero, customImageUrl: event.target.result as string, visualType: 'image' },
-          });
-        }
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressed = await compressImageFile(file, 1920, 0.82);
+        onChangeConfig({
+          ...config,
+          hero: { ...config.hero, customImageUrl: compressed, visualType: 'background' },
+        });
+        setFeedbackMsg({ text: 'Đã cập nhật ảnh nền Section 1 thành công!', type: 'success' });
+        setTimeout(() => setFeedbackMsg(null), 3000);
+      } catch (err) {
+        console.warn('Hero file upload error', err);
+      } finally {
+        e.target.value = '';
+      }
     }
   };
 
-  const handleKeyVisualFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleKeyVisualFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          onChangeConfig({
-            ...config,
-            hero: { ...config.hero, keyVisualUrl: event.target.result as string },
-          });
-        }
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressed = await compressImageFile(file, 1400, 0.85);
+        onChangeConfig({
+          ...config,
+          hero: { ...config.hero, keyVisualUrl: compressed },
+        });
+        setFeedbackMsg({ text: 'Đã cập nhật poster Key Visual thành công!', type: 'success' });
+        setTimeout(() => setFeedbackMsg(null), 3000);
+      } catch (err) {
+        console.warn('Key visual file upload error', err);
+      } finally {
+        e.target.value = '';
+      }
     }
   };
 
@@ -1196,18 +1222,42 @@ export const CustomizerDrawer: React.FC<CustomizerDrawerProps> = ({
                   </p>
                 </div>
 
-                {/* URL Input */}
+                {/* Live Feedback Notification */}
+                {feedbackMsg && (
+                  <div
+                    className={`p-2.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition ${
+                      feedbackMsg.type === 'success'
+                        ? 'bg-emerald-50 text-emerald-900 border border-emerald-300'
+                        : 'bg-red-50 text-red-900 border border-red-300'
+                    }`}
+                  >
+                    {feedbackMsg.type === 'success' ? (
+                      <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                    )}
+                    <span>{feedbackMsg.text}</span>
+                  </div>
+                )}
+
+                {/* URL Input with Enter support */}
                 <div className="space-y-1">
                   <label className="text-[11px] font-medium text-stone-600">
-                    Hoặc dán link ảnh (URL) trực tiếp:
+                    Hoặc dán link ảnh (URL trực tiếp, link Google Drive...):
                   </label>
                   <div className="flex gap-2">
                     <input
                       type="url"
                       value={customUrlInput}
                       onChange={(e) => setCustomUrlInput(e.target.value)}
-                      placeholder="https://example.com/anh-mon-an.jpg"
-                      className="flex-1 rounded-lg border border-stone-300 px-3 py-1.5 text-xs text-stone-800"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && customUrlInput.trim()) {
+                          updateStallImage(currentStall.id, customUrlInput.trim());
+                          setCustomUrlInput('');
+                        }
+                      }}
+                      placeholder="Dán link ảnh và bấm Áp dụng (hoặc Enter)..."
+                      className="flex-1 rounded-lg border border-stone-300 px-3 py-1.5 text-xs text-stone-800 focus:outline-amber-700"
                     />
                     <button
                       type="button"
@@ -1217,10 +1267,73 @@ export const CustomizerDrawer: React.FC<CustomizerDrawerProps> = ({
                           setCustomUrlInput('');
                         }
                       }}
-                      className="rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-800 transition"
+                      className="rounded-lg bg-amber-700 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-amber-800 transition cursor-pointer"
                     >
                       Áp dụng
                     </button>
+                  </div>
+                </div>
+
+                {/* SPECIAL CHICKEN FOOD PRESETS */}
+                <div className="rounded-lg border border-amber-300 bg-amber-50/70 p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-[11px] font-bold text-amber-950 flex items-center gap-1.5">
+                      <span>🍗 Gợi ý ảnh Gà Quê / Gà Đồi / Gà Nướng xứ Quảng:</span>
+                    </label>
+                    {currentStall.name !== 'Gánh gà quê' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          updateStallText(currentStall.id, 'name', 'Gánh gà quê');
+                          updateStallText(
+                            currentStall.id,
+                            'desc',
+                            'Gà ta thả đồi nướng than hoa vàng rộm, xé phay bóp rau răm cay nồng, ăn kèm xôi dẻo.'
+                          );
+                          updateStallText(currentStall.id, 'sub', 'Muối ớt chanh & hành tím ngâm chua ngọt');
+                          setFeedbackMsg({
+                            text: 'Đã cập nhật tên gánh thành "Gánh gà quê"!',
+                            type: 'success',
+                          });
+                          setTimeout(() => setFeedbackMsg(null), 3000);
+                        }}
+                        className="text-[10px] font-bold text-amber-800 hover:text-amber-950 underline cursor-pointer"
+                        title="Đổi tên gánh này thành Gánh gà quê"
+                      >
+                        Đổi tên thành &ldquo;Gánh gà quê&rdquo;
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    {CHICKEN_FOOD_PRESETS.map((preset, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => updateStallImage(currentStall.id, preset.url)}
+                        className={`group relative h-20 overflow-hidden rounded-lg border text-left transition cursor-pointer ${
+                          currentStall.imageUrl === preset.url
+                            ? 'ring-2 ring-amber-700 border-amber-700 shadow-sm'
+                            : 'border-stone-200 hover:border-amber-600'
+                        }`}
+                      >
+                        <img
+                          src={preset.url}
+                          alt={preset.label}
+                          className="h-full w-full object-cover group-hover:scale-105 transition"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent flex items-end p-1.5">
+                          <span className="text-[10px] font-semibold text-white leading-tight line-clamp-2">
+                            {preset.label}
+                          </span>
+                        </div>
+                        {currentStall.imageUrl === preset.url && (
+                          <div className="absolute top-1 right-1 rounded-full bg-amber-700 p-0.5 text-white shadow-xs">
+                            <Check className="h-3 w-3" />
+                          </div>
+                        )}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
@@ -1228,7 +1341,7 @@ export const CustomizerDrawer: React.FC<CustomizerDrawerProps> = ({
                 {CURATED_FOOD_PRESETS[currentStall.id] && (
                   <div>
                     <label className="block text-[11px] font-semibold text-stone-600 mb-1.5">
-                      Gợi ý ảnh chụp ẩm thực phù hợp:
+                      Gợi ý ảnh chụp đặc sản khác:
                     </label>
                     <div className="grid grid-cols-3 gap-2">
                       {CURATED_FOOD_PRESETS[currentStall.id].map((url, i) => (
@@ -1236,7 +1349,7 @@ export const CustomizerDrawer: React.FC<CustomizerDrawerProps> = ({
                           key={i}
                           type="button"
                           onClick={() => updateStallImage(currentStall.id, url)}
-                          className={`relative h-16 overflow-hidden rounded-lg border transition ${
+                          className={`relative h-16 overflow-hidden rounded-lg border transition cursor-pointer ${
                             currentStall.imageUrl === url
                               ? 'ring-2 ring-amber-700 border-amber-700'
                               : 'border-stone-200 hover:opacity-80'

@@ -18,6 +18,15 @@ export const AVAILABLE_SANS_FONTS = [
   { id: 'Manrope', label: 'Manrope (Cân đối hình học)' },
 ];
 
+export const CHICKEN_FOOD_PRESETS = [
+  { url: 'https://images.unsplash.com/photo-1598103442097-8b74394b95c6?auto=format&fit=crop&w=800&q=80', label: 'Gà quê nướng than vàng giòn' },
+  { url: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&w=800&q=80', label: 'Gà ta nướng mật ong thảo mộc' },
+  { url: 'https://images.unsplash.com/photo-1606755962773-d324e0a13086?auto=format&fit=crop&w=800&q=80', label: 'Gà luộc lá chanh muối ớt' },
+  { url: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=800&q=80', label: 'Gỏi gà xé phay rau răm' },
+  { url: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=800&q=80', label: 'Gà nướng sa tế xiên than hoa' },
+  { url: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=800&q=80', label: 'Xôi gà đồi xé thơm dẻo' },
+];
+
 export const CURATED_FOOD_PRESETS: Record<string, string[]> = {
   stall1: [
     'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=80', // Spring rolls fresh
@@ -25,9 +34,11 @@ export const CURATED_FOOD_PRESETS: Record<string, string[]> = {
     'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?auto=format&fit=crop&w=800&q=80', // Vietnamese rolls
   ],
   stall2: [
-    'https://images.unsplash.com/photo-1505253758473-96b3015f27eb?auto=format&fit=crop&w=800&q=80', // Traditional dumplings / rice cakes
-    'https://images.unsplash.com/photo-1617093727343-374698b1b08d?auto=format&fit=crop&w=800&q=80', // Steamed cakes
-    'https://images.unsplash.com/photo-1541518763669-27fef04b14ea?auto=format&fit=crop&w=800&q=80', // Rustic street snacks
+    'https://images.unsplash.com/photo-1598103442097-8b74394b95c6?auto=format&fit=crop&w=800&q=80', // Gà quê nướng than
+    'https://images.unsplash.com/photo-1606755962773-d324e0a13086?auto=format&fit=crop&w=800&q=80', // Gà luộc lá chanh
+    'https://images.unsplash.com/photo-1505253758473-96b3015f27eb?auto=format&fit=crop&w=800&q=80', // Bánh quê mộc mạc
+    'https://images.unsplash.com/photo-1617093727343-374698b1b08d?auto=format&fit=crop&w=800&q=80', // Bánh nậm bèo lá chuối
+    'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=800&q=80', // Gỏi gà xé phay
   ],
   stall3: [
     'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&w=800&q=80', // Crispy pancake / sizzling
@@ -35,9 +46,10 @@ export const CURATED_FOOD_PRESETS: Record<string, string[]> = {
     'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=800&q=80', // Golden crispy food
   ],
   stall4: [
-    'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=800&q=80', // Charcoal BBQ skewers
+    'https://images.unsplash.com/photo-1598103442097-8b74394b95c6?auto=format&fit=crop&w=800&q=80', // Gà nướng than hoa
+    'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=800&q=80', // Charcoal BBQ skewers / gà sa tế
     'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=80', // Roasted pork & grill
-    'https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?auto=format&fit=crop&w=800&q=80', // Roast meats
+    'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&w=800&q=80', // Roast poultry
   ],
   stall5: [
     'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=800&q=80', // Claypot braised stew / warm soup
@@ -82,11 +94,7 @@ export const FAQS = [
   },
   {
     q: 'Chợ họp ở đâu và có bãi đỗ xe không?',
-    a: 'Địa điểm tổ chức tại Nhà hàng Chồ Dining, 202–204 Trần Bạch Đằng, Đà Nẵng (Sảnh 3). Nhà hàng có bãi đậu ô tô và xe máy rộng rãi, có nhân viên hướng dẫn tận tình.',
-  },
-  {
-    q: 'Có thể đổi thêm xu trong phiên chợ không?',
-    a: 'Một vé 500.000đ đã bao gồm lượng xu tre đủ để bạn thưởng thức no nê trọn vẹn cả 6 gánh hàng. Nếu muốn uống thêm bia thủ công, rượu quê đặc biệt hoặc mua thêm đặc sản đóng gói mang về (như mắm Nam Ô, trà sen, bánh tráng Đại Lộc), bạn có thể đổi thêm xu tại quầy thu ngân bất kỳ lúc nào.',
+    a: 'Địa điểm tổ chức tại Nhà hàng Chồ Dining, 202 Trần Bạch Đằng, Đà Nẵng. Nhà hàng có bãi đậu ô tô và xe máy rộng rãi, có nhân viên hướng dẫn tận tình.',
   },
 ];
 
@@ -107,10 +115,10 @@ export const DEFAULT_LANDING_CONFIG: LandingConfig = {
     showCountdown: true,
     customTagline: 'Cuối năm, về Chồ gặp nhau.',
     eventDate: '2026-11-24T17:30:00+07:00',
-    eventDateFormatted: 'Tối thứ Ba 24/11/2026',
+    eventDateFormatted: 'Tối chủ nhật 22/11/2026',
     eventTimeFormatted: '17:30–20:30',
     locationName: 'Nhà hàng Chồ Dining',
-    locationAddress: '202–204 Trần Bạch Đằng, Đà Nẵng',
+    locationAddress: '202 Trần Bạch Đằng, Đà Nẵng',
     priceAdult: 500000,
     priceChildRatio: 0.5,
     totalTickets: 70,

@@ -39,12 +39,6 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
             Sáu gánh hàng rong
           </a>
           <a
-            href="#dat-ve"
-            className="hover:text-white transition-colors hover:underline underline-offset-8 whitespace-nowrap shrink-0"
-          >
-            Đặt vé đi chợ
-          </a>
-          <a
             href="#hoi-dap"
             className="hover:text-white transition-colors hover:underline underline-offset-8 whitespace-nowrap shrink-0"
           >

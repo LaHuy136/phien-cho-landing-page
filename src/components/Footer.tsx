@@ -1,19 +1,15 @@
 import React from 'react';
-import { Sliders, Phone, MapPin, Clock } from 'lucide-react';
+import { Phone, MapPin, Clock } from 'lucide-react';
 import { LandingConfig } from '../types';
 
 interface FooterProps {
   serifFontClass?: string;
   config?: LandingConfig;
-  onOpenExportModal?: () => void;
-  onOpenGoogleSheetsModal?: () => void;
 }
 
 export const Footer: React.FC<FooterProps> = ({
   serifFontClass = 'font-serif',
   config,
-  onOpenExportModal,
-  onOpenGoogleSheetsModal,
 }) => {
   return (
     <footer className="w-full bg-[var(--deep,#7d2c19)] text-[var(--on-deep,#f6ece0)] pt-16 pb-12 border-t border-white/10 relative">
@@ -44,7 +40,7 @@ export const Footer: React.FC<FooterProps> = ({
             <div className="flex items-start gap-2.5 opacity-90">
               <MapPin className="h-4 w-4 shrink-0 mt-1 text-[var(--gold,#d99c48)]" />
               <span>
-                {config?.hero?.locationAddress || '202–204 Trần Bạch Đằng, Đà Nẵng'}
+                {config?.hero?.locationAddress || '202 Trần Bạch Đằng, Đà Nẵng'}
               </span>
             </div>
             <div className="flex items-center gap-2.5 opacity-90">
@@ -80,11 +76,6 @@ export const Footer: React.FC<FooterProps> = ({
                 </a>
               </li>
               <li>
-                <a href="#dat-ve" className="hover:text-white hover:underline transition">
-                  Đặt vé đi chợ
-                </a>
-              </li>
-              <li>
                 <a href="#hoi-dap" className="hover:text-white hover:underline transition">
                   Hỏi đáp
                 </a>
@@ -94,31 +85,7 @@ export const Footer: React.FC<FooterProps> = ({
         </div>
 
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between text-xs opacity-70 gap-4">
-          <p>© 2026 Chồ Dining. Bảo lưu mọi quyền.</p>
-
-          <div className="flex items-center gap-3">
-            {onOpenExportModal && (
-              <button
-                type="button"
-                onClick={onOpenExportModal}
-                className="hover:text-white hover:underline text-amber-200/80 transition cursor-pointer"
-              >
-                Xuất bản & Tên miền
-              </button>
-            )}
-            {onOpenGoogleSheetsModal && (
-              <>
-                <span>·</span>
-                <button
-                  type="button"
-                  onClick={onOpenGoogleSheetsModal}
-                  className="hover:text-white hover:underline text-emerald-300/80 transition cursor-pointer"
-                >
-                  Google Sheet
-                </button>
-              </>
-            )}
-          </div>
+          <p>© 2026 Chồ Dining. Bảo lưu mọi bản quyền.</p>
         </div>
       </div>
     </footer>
