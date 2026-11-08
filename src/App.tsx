@@ -29,28 +29,31 @@ import {
 } from './data/landingData';
 import { LandingConfig, StallItem } from './types';
 
-const STORAGE_KEY_CONFIG = 'cho_landing_config_v4';
+const STORAGE_KEY_CONFIG = 'cho_landing_config_v2';
 const STORAGE_KEY_PUBLISH = 'cho_landing_publish_mode_v1';
 
 export default function App() {
-  // Initialize config with canonical defaults, merging customized stalls if present
+  // Restore all user customizations from previous version
   const [config, setConfig] = useState<LandingConfig>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY_CONFIG);
+      const saved =
+        localStorage.getItem('cho_landing_config_v2') ||
+        localStorage.getItem('cho_landing_config_v1') ||
+        localStorage.getItem('cho_landing_config_v3') ||
+        localStorage.getItem('cho_landing_config_v4') ||
+        localStorage.getItem('cho_landing_config');
       if (saved) {
         const parsed = JSON.parse(saved);
-        return {
-          ...DEFAULT_LANDING_CONFIG,
-          ...parsed,
-          hero: {
-            ...DEFAULT_LANDING_CONFIG.hero,
-            ...(parsed.hero || {}),
-            eventDate: DEFAULT_LANDING_CONFIG.hero.eventDate,
-            eventDateFormatted: DEFAULT_LANDING_CONFIG.hero.eventDateFormatted,
-            locationAddress: DEFAULT_LANDING_CONFIG.hero.locationAddress,
-            description: DEFAULT_LANDING_CONFIG.hero.description,
-          },
-        };
+        if (parsed && typeof parsed === 'object') {
+          const cleanFaqs = Array.isArray(parsed.faqs)
+            ? parsed.faqs.filter((f: any) => f && f.q && f.q.trim().length > 0)
+            : FAQS;
+          return {
+            ...DEFAULT_LANDING_CONFIG,
+            ...parsed,
+            faqs: cleanFaqs.length > 0 ? cleanFaqs : FAQS,
+          };
+        }
       }
     } catch (e) {
       console.warn('Could not parse saved config, using default', e);
@@ -471,7 +474,9 @@ export default function App() {
             </h2>
 
             <div className="divide-y divide-[var(--line,#dccfbd)]">
-              {(config.faqs || FAQS).map((faq, index) => (
+              {(config.faqs || FAQS)
+                .filter((faq) => faq && faq.q && faq.q.trim().length > 0)
+                .map((faq, index) => (
                 <details
                   key={index}
                   className="group py-5 transition"
