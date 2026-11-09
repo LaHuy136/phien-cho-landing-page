@@ -18,9 +18,14 @@ export const Footer: React.FC<FooterProps> = ({
           <div className="md:col-span-5 space-y-3">
             <a
               href="/"
-              className={`inline-block text-3xl font-bold tracking-tight text-[var(--gold,#d99c48)] hover:brightness-110 transition ${serifFontClass}`}
+              className={`inline-flex items-center gap-2.5 text-3xl font-bold tracking-tight text-[var(--gold,#d99c48)] hover:brightness-110 transition ${serifFontClass}`}
             >
-              chồ
+              <img
+                src="/favicon.png"
+                alt="Logo Chồ Dining"
+                className="h-8 w-8 object-contain"
+              />
+              <span>chồ</span>
             </a>
             <p className="text-base font-semibold text-white tracking-wide">
               {config?.hero?.locationName || 'Chồ Dining'} · Nhà hàng ký ức dòng sông

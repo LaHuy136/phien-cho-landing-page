@@ -13,9 +13,16 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
         {/* Zone 1: Wordmark */}
         <a
           href="/"
-          className={`text-2xl font-bold tracking-tight text-[var(--on-deep,#f6ece0)] whitespace-nowrap shrink-0 ${serifFontClass}`}
+          className={`flex items-center gap-2.5 text-2xl font-bold tracking-tight text-[var(--on-deep,#f6ece0)] whitespace-nowrap shrink-0 group ${serifFontClass}`}
         >
-          chồ <span className="opacity-75 text-sm font-normal">· Nhà hàng ký ức dòng sông</span>
+          <img
+            src="/favicon.png"
+            alt="Logo Chồ Dining"
+            className="h-7 w-7 object-contain transition-transform group-hover:scale-105"
+          />
+          <span>
+            chồ <span className="opacity-75 text-sm font-normal">· Nhà hàng ký ức dòng sông</span>
+          </span>
         </a>
 
         {/* Zone 2: Navigation links */}

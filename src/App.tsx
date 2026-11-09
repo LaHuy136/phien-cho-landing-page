@@ -33,46 +33,10 @@ const STORAGE_KEY_CONFIG = 'cho_landing_config_v2';
 const STORAGE_KEY_PUBLISH = 'cho_landing_publish_mode_v1';
 
 export default function App() {
-  // Restore all user customizations from previous version
-  const [config, setConfig] = useState<LandingConfig>(() => {
-    try {
-      const saved =
-        localStorage.getItem('cho_landing_config_v2') ||
-        localStorage.getItem('cho_landing_config_v1') ||
-        localStorage.getItem('cho_landing_config_v3') ||
-        localStorage.getItem('cho_landing_config_v4') ||
-        localStorage.getItem('cho_landing_config');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed && typeof parsed === 'object') {
-          const cleanFaqs = Array.isArray(parsed.faqs)
-            ? parsed.faqs.filter((f: any) => f && f.q && f.q.trim().length > 0)
-            : FAQS;
-          return {
-            ...DEFAULT_LANDING_CONFIG,
-            ...parsed,
-            faqs: cleanFaqs.length > 0 ? cleanFaqs : FAQS,
-          };
-        }
-      }
-    } catch (e) {
-      console.warn('Could not parse saved config, using default', e);
-    }
-    return DEFAULT_LANDING_CONFIG;
-  });
-
-  // Track Publish Mode (default true for official published live website)
-  const [isPublishMode, setIsPublishMode] = useState<boolean>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_PUBLISH);
-      if (saved !== null) {
-        return saved === 'true';
-      }
-      return true; // Default to PUBLISH MODE: ON
-    } catch {
-      return true;
-    }
-  });
+  // Directly use DEFAULT_LANDING_CONFIG from src/data/landingData.ts as the single source of truth
+  // Any code edit in landingData.ts will update localhost and Vercel immediately without localStorage conflicts!
+  const [config, setConfig] = useState<LandingConfig>(DEFAULT_LANDING_CONFIG);
+  const [isPublishMode, setIsPublishMode] = useState<boolean>(true);
 
   // Customizer closed by default for official clean live website
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
@@ -307,6 +271,13 @@ export default function App() {
                     <img
                       src={config.hero.keyVisualUrl || '/images/key_visual.jpg'}
                       alt="Key Visual Phiên chợ ký ức ở Chồ Dining"
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        if (!target.dataset.triedFallback) {
+                          target.dataset.triedFallback = 'true';
+                          target.src = '/images/key_visual_jpg';
+                        }
+                      }}
                       className="w-full h-auto max-h-[640px] sm:max-h-[700px] lg:max-h-[760px] object-contain sm:object-cover object-center transition duration-700 group-hover:scale-[1.02]"
                     />
 
